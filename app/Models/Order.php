@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Order extends Model{
+class Order extends Model
+{
     use HasFactory;
-    protected $fillable=[
+
+    protected $fillable = [
         'user_id',
         'grand_total',
         'payment_method',
@@ -17,17 +19,21 @@ class Order extends Model{
         'shipping_amount',
         'shipping_method',
         'notes',
+        'snap_token',      // ← tambahkan ini agar $order->update(['snap_token' => ...]) bekerja
     ];
-    public function user(){
+
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
-    //setiap order bisa memiliki banyak Item
-    public function items(){
+
+    public function items()
+    {
         return $this->hasMany(OrderItem::class);
     }
-    //setiap order memiliki SATU address
-    public function address(){
+
+    public function address()
+    {
         return $this->hasOne(Address::class);
     }
-
 }

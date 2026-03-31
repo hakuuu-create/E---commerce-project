@@ -10,7 +10,6 @@ use Livewire\Attributes\Title;
 use App\Helpers\CartManagement;
 use Illuminate\Support\Facades\Mail;
 use Midtrans\Snap;
-use Midtrans\Config;
 
 #[Title('Checkout')]
 class CheckoutPage extends Component
@@ -23,7 +22,6 @@ class CheckoutPage extends Component
     public $state;
     public $zip_code;
     public $payment_method;
-    public $snapToken; // Properti untuk menyimpan Snap Token Midtrans
 
     public function mount()
     {
@@ -31,126 +29,125 @@ class CheckoutPage extends Component
         if (count($cart_items) == 0) {
             return redirect('/products');
         }
-
-        // Konfigurasi Midtrans
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$clientKey = config('midtrans.client_key');
-        Config::$isProduction = config('midtrans.is_production');
-        Config::$isSanitized = config('midtrans.is_sanitized');
-        Config::$is3ds = config('midtrans.is_3ds');
     }
 
     public function placeOrder()
     {
         $this->validate([
-            'first_name' => 'required',
-            'last_name' => 'required',
-            'phone' => 'required',
+            'first_name'     => 'required',
+            'last_name'      => 'required',
+            'phone'          => 'required',
             'street_address' => 'required',
-            'city' => 'required',
-            'state' => 'required',
-            'zip_code' => 'required',
+            'city'           => 'required',
+            'state'          => 'required',
+            'zip_code'       => 'required',
             'payment_method' => 'required',
         ]);
 
-        $cart_items = CartManagement::getCartItemsFromCookie();
+        $cart_items  = CartManagement::getCartItemsFromCookie();
+        $grand_total = CartManagement::calculateGrandTotal($cart_items);
 
-        // Format item untuk Midtrans
-        $midtrans_items = array_map(function ($item) {
-            return [
-                'id' => $item['product_id'],
-                'price' => $item['unit_amount'],
-                'quantity' => $item['quantity'],
-                'name' => $item['name'],
-            ];
-        }, $cart_items);
-
-        // Simpan pesanan
-        $order = new Order();
-        $order->user_id = auth('web')->user()->id;
-        $order->grand_total = CartManagement::calculateGrandTotal($cart_items);
-        $order->payment_method = $this->payment_method;
-        $order->payment_status = 'pending';
-        $order->status = 'new';
-        $order->currency = 'idr';
-        $order->shipping_amount = '0';
+        // --- Simpan Order ---
+        $order                  = new Order();
+        $order->user_id         = auth('web')->user()->id;
+        $order->grand_total     = $grand_total;
+        $order->payment_method  = $this->payment_method;
+        $order->payment_status  = 'pending';
+        $order->status          = 'new';
+        $order->currency        = 'idr';
+        $order->shipping_amount = 0;
         $order->shipping_method = 'none';
-        $order->notes = 'Order placed by ' . auth('web')->user()->name;
+        $order->notes           = 'Order placed by ' . auth('web')->user()->name;
         $order->save();
 
-        // Simpan alamat
-        $address = new Address();
-        $address->first_name = $this->first_name;
-        $address->last_name = $this->last_name;
-        $address->phone = $this->phone;
+        // --- Simpan Alamat ---
+        $address                 = new Address();
+        $address->order_id       = $order->id;
+        $address->first_name     = $this->first_name;
+        $address->last_name      = $this->last_name;
+        $address->phone          = $this->phone;
         $address->street_address = $this->street_address;
-        $address->city = $this->city;
-        $address->state = $this->state;
-        $address->zip_code = $this->zip_code;
-        $address->order_id = $order->id;
+        $address->city           = $this->city;
+        $address->state          = $this->state;
+        $address->zip_code       = $this->zip_code;
         $address->save();
 
-        // Simpan item pesanan
+        // --- Simpan Order Items ---
         $order->items()->createMany($cart_items);
 
-        $redirect_url = '';
+        // ================================================================
+        // MIDTRANS
+        // ================================================================
+        if ($this->payment_method === 'midtrans') {
 
-        if ($this->payment_method == 'midtrans') {
-            // Buat transaksi Midtrans
-            $transaction_details = [
-                'order_id' => $order->id . '-' . uniqid(),
-                'gross_amount' => $order->grand_total,
-            ];
+            // Format item untuk Midtrans (nama max 50 karakter, harga integer)
+            $midtrans_items = array_map(function ($item) {
+                return [
+                    'id'       => (string) $item['product_id'],
+                    'price'    => (int) $item['unit_amount'],
+                    'quantity' => (int) $item['quantity'],
+                    'name'     => mb_substr($item['name'], 0, 50),
+                ];
+            }, $cart_items);
 
-            $customer_details = [
-                'first_name' => $this->first_name,
-                'last_name' => $this->last_name,
-                'email' => auth('web')->user()->email,
-                'phone' => $this->phone,
-            ];
-
-            $transaction_data = [
-                'transaction_details' => $transaction_details,
-                'customer_details' => $customer_details,
+            $params = [
+                'transaction_details' => [
+                    // order_id harus unik di Midtrans, tambahkan timestamp
+                    'order_id'     => 'ORDER-' . $order->id . '-' . time(),
+                    'gross_amount' => (int) $grand_total,
+                ],
+                'customer_details' => [
+                    'first_name' => $this->first_name,
+                    'last_name'  => $this->last_name,
+                    'email'      => auth('web')->user()->email,
+                    'phone'      => $this->phone,
+                ],
                 'item_details' => $midtrans_items,
             ];
 
             try {
-                $this->snapToken = Snap::getSnapToken($transaction_data);
-                $order->update(['snap_token' => $this->snapToken]);
+                $snapToken = Snap::getSnapToken($params);
+
+                // Simpan snap_token ke order untuk referensi
+                $order->update(['snap_token' => $snapToken]);
+
+                // Kosongkan cart
+                CartManagement::ClearCartItems();
+
+                // Kirim email notifikasi
+                Mail::to(auth('web')->user())->send(new OrderPlaced($order));
+
+                // Dispatch event ke browser → buka Snap popup
+                // Livewire 3 gunakan $this->dispatch()
+                $this->dispatch('midtrans-snap-open', snapToken: $snapToken);
+
             } catch (\Exception $e) {
-                session()->flash('error', 'Failed to initiate Midtrans payment: ' . $e->getMessage());
-                return redirect()->back();
+                // Rollback jika gagal generate token
+                $order->items()->delete();
+                $address->delete();
+                $order->delete();
+
+                session()->flash('error', 'Gagal menginisiasi pembayaran Midtrans: ' . $e->getMessage());
             }
 
-            // Tidak langsung redirect, biarkan Livewire render Snap popup
-            $redirect_url = null;
+        // ================================================================
+        // COD
+        // ================================================================
         } else {
-            $redirect_url = route('success');
+            CartManagement::ClearCartItems();
+            Mail::to(auth('web')->user())->send(new OrderPlaced($order));
+            return redirect()->route('success');
         }
-
-        // Kosongkan keranjang
-        CartManagement::clearCartItems();
-
-        // Kirim email notifikasi
-        Mail::to(auth('web')->user())->send(new OrderPlaced($order));
-
-        if ($redirect_url) {
-            return redirect($redirect_url);
-        }
-
-        // Render ulang halaman untuk menampilkan Snap popup
-        return null;
     }
 
     public function render()
     {
-        $cart_items = CartManagement::getCartItemsFromCookie();
+        $cart_items  = CartManagement::getCartItemsFromCookie();
         $grand_total = CartManagement::calculateGrandTotal($cart_items);
+
         return view('livewire.checkout-page', [
-            'cart_items' => $cart_items,
+            'cart_items'  => $cart_items,
             'grand_total' => $grand_total,
-            'snapToken' => $this->snapToken,
         ]);
     }
 }
