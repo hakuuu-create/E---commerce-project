@@ -26,7 +26,7 @@ class CheckoutPage extends Component
     public function mount()
     {
         $cart_items = CartManagement::getCartItemsFromCookie();
-        if (count($cart_items) == 0) {
+        if (count($cart_items) === 0) {
             return redirect('/products');
         }
     }
@@ -47,7 +47,7 @@ class CheckoutPage extends Component
         $cart_items  = CartManagement::getCartItemsFromCookie();
         $grand_total = CartManagement::calculateGrandTotal($cart_items);
 
-        // --- Simpan Order ---
+        // ── 1. Simpan Order ──────────────────────────────────────────────────
         $order                  = new Order();
         $order->user_id         = auth('web')->user()->id;
         $order->grand_total     = $grand_total;
@@ -60,7 +60,7 @@ class CheckoutPage extends Component
         $order->notes           = 'Order placed by ' . auth('web')->user()->name;
         $order->save();
 
-        // --- Simpan Alamat ---
+        // ── 2. Simpan Alamat ─────────────────────────────────────────────────
         $address                 = new Address();
         $address->order_id       = $order->id;
         $address->first_name     = $this->first_name;
@@ -72,16 +72,21 @@ class CheckoutPage extends Component
         $address->zip_code       = $this->zip_code;
         $address->save();
 
-        // --- Simpan Order Items ---
+        // ── 3. Simpan Order Items ─────────────────────────────────────────────
         $order->items()->createMany($cart_items);
 
-        // ================================================================
-        // MIDTRANS
-        // ================================================================
+        // ── 4. Proses Pembayaran ──────────────────────────────────────────────
         if ($this->payment_method === 'midtrans') {
 
-            // Format item untuk Midtrans (nama max 50 karakter, harga integer)
-            $midtrans_items = array_map(function ($item) {
+            /*
+             * Format item_details untuk Midtrans.
+             * Rules dari docs:
+             *   - id     : string
+             *   - price  : integer (bukan desimal)
+             *   - name   : string, max 50 karakter
+             * Jumlah seluruh (price * quantity) HARUS sama dengan gross_amount.
+             */
+            $item_details = array_map(function ($item) {
                 return [
                     'id'       => (string) $item['product_id'],
                     'price'    => (int) $item['unit_amount'],
@@ -90,9 +95,14 @@ class CheckoutPage extends Component
                 ];
             }, $cart_items);
 
+            /*
+             * order_id di Midtrans HARUS unik untuk setiap transaksi.
+             * Kalau pakai $order->id saja dan pembayaran gagal lalu coba lagi,
+             * Midtrans akan reject karena order_id sudah pernah dipakai.
+             * Solusi: tambahkan timestamp supaya selalu unik.
+             */
             $params = [
                 'transaction_details' => [
-                    // order_id harus unik di Midtrans, tambahkan timestamp
                     'order_id'     => 'ORDER-' . $order->id . '-' . time(),
                     'gross_amount' => (int) $grand_total,
                 ],
@@ -102,38 +112,51 @@ class CheckoutPage extends Component
                     'email'      => auth('web')->user()->email,
                     'phone'      => $this->phone,
                 ],
-                'item_details' => $midtrans_items,
+                'item_details' => $item_details,
             ];
 
             try {
+                /*
+                 * Snap::getSnapToken() melakukan POST ke Midtrans API:
+                 * POST https://app.sandbox.midtrans.com/snap/v1/transactions
+                 * Mengembalikan array ['token' => '...', 'redirect_url' => '...']
+                 * atau langsung string token — tergantung versi library.
+                 */
                 $snapToken = Snap::getSnapToken($params);
 
-                // Simpan snap_token ke order untuk referensi
+                // Simpan snap_token ke DB agar bisa dipakai ulang jika perlu
                 $order->update(['snap_token' => $snapToken]);
 
-                // Kosongkan cart
+                // Kosongkan cart SETELAH token berhasil didapat
                 CartManagement::ClearCartItems();
 
-                // Kirim email notifikasi
+                // Kirim email notifikasi pesanan
                 Mail::to(auth('web')->user())->send(new OrderPlaced($order));
 
-                // Dispatch event ke browser → buka Snap popup
-                // Livewire 3 gunakan $this->dispatch()
-                $this->dispatch('midtrans-snap-open', snapToken: $snapToken);
+                /*
+                 * Kirim event ke frontend (Livewire 3).
+                 * Di blade kita tangkap dengan:
+                 *   Livewire.on('open-snap', (data) => { snap.pay(data.snapToken) })
+                 *
+                 * PENTING: Livewire 3 mengirim named argument, jadi di JS
+                 * data akan berupa object: { snapToken: '...' }
+                 */
+                $this->dispatch('open-snap', snapToken: $snapToken);
 
             } catch (\Exception $e) {
-                // Rollback jika gagal generate token
+                /*
+                 * Jika gagal generate token (misal server key salah, gross_amount
+                 * tidak cocok, dsb.) → rollback data order agar tidak ada ghost order.
+                 */
                 $order->items()->delete();
                 $address->delete();
                 $order->delete();
 
-                session()->flash('error', 'Gagal menginisiasi pembayaran Midtrans: ' . $e->getMessage());
+                session()->flash('error', 'Gagal inisiasi pembayaran: ' . $e->getMessage());
             }
 
-        // ================================================================
-        // COD
-        // ================================================================
         } else {
+            // ── COD ───────────────────────────────────────────────────────────
             CartManagement::ClearCartItems();
             Mail::to(auth('web')->user())->send(new OrderPlaced($order));
             return redirect()->route('success');

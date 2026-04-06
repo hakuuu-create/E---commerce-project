@@ -4,35 +4,28 @@ namespace App\Livewire;
 
 use App\Models\Order;
 use Livewire\Component;
-use Livewire\Attributes\Url;
 use Livewire\Attributes\Title;
-use Livewire\Attributes\Session;
 
-#[Title('Success page - E-commerce project')]
-class SuccessPage extends Component{
-    #[Url]
-    public $session_id;
-    public function render(){
+#[Title('Success - E-commerce project')]
+class SuccessPage extends Component
+{
+    public function render()
+    {
+        /*
+         * Tampilkan order terbaru milik user yang sedang login.
+         * Order sudah tersimpan di DB sejak placeOrder() dijalankan,
+         * sebelum popup Midtrans dibuka.
+         *
+         * Catatan: payment_status kemungkinan masih 'pending' di sini —
+         * status akan diupdate ke 'paid' saat Midtrans mengirim webhook.
+         */
+        $latest_order = Order::with('address')
+            ->where('user_id', auth('web')->user()->id)
+            ->latest()
+            ->first();
 
-        //give the latest order for the current login user
-        $latest_order = Order::with('address')->where('user_id',auth('web')->user()->id)->latest()->first();
-
-        if($this->session_id){
-            Stripe::setApikey(env('STRIPE_SECRET'));
-            $session_info = Session::retrieve($this->session_id);
-
-            if($session_info->payment_status != 'paid'){
-                $latest_order->payment_status = 'failed';
-                $latest_order->save();
-                return redirect()->route('cancel');
-            }else if($session_info->payment_status == 'paid'){
-                $latest_order->payment_status = 'paid';
-                $latest_order->save();
-            }
-        }
-
-        return view('livewire.success-page',[
+        return view('livewire.success-page', [
             'order' => $latest_order,
         ]);
-    } 
+    }
 }

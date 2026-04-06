@@ -17,40 +17,41 @@ use App\Livewire\Auth\ResetPasswordPage;
 use App\Livewire\Auth\ForgotPasswordPage;
 use App\Http\Controllers\PaymentController;
 
-
-
-
-//Route::get('/', function () {
-//    return view('welcome');
-//});
-
 Route::get('/', HomePage::class);
-Route::get('/categories',CategoriesPage::class);
-Route::get('/products',ProductsPage::class);
-Route::get('/cart',CartPage::class);
-Route::get('/products/{slug}',ProductDetailPage::class);//->name('products.show');
+Route::get('/categories', CategoriesPage::class);
+Route::get('/products', ProductsPage::class);
+Route::get('/cart', CartPage::class);
+Route::get('/products/{slug}', ProductDetailPage::class);
 
-Route::middleware('guest')->group(function(){
-    Route::get('/login',LoginPage::class)->name('login');
-    Route::get('/register',RegisterPage::class);
-    Route::get('/forgot',ForgotPasswordPage::class)->name('password.request');
-    Route::get('/reset/{token}',ResetPasswordPage::class)->name('password.reset');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', LoginPage::class)->name('login');
+    Route::get('/register', RegisterPage::class);
+    Route::get('/forgot', ForgotPasswordPage::class)->name('password.request');
+    Route::get('/reset/{token}', ResetPasswordPage::class)->name('password.reset');
 });
 
-Route::middleware('auth')->group(function(){
-    Route::get('/logout',function(){
-        auth('web')->logout();//web = x 
+Route::middleware('auth')->group(function () {
+    Route::get('/logout', function () {
+        auth('web')->logout();
         return redirect('/');
     });
-    Route::get('/checkout',CheckoutPage::class);
-    Route::get('/my-orders',MyOrdersPage::class);
-    Route::get('/my-orders/{order_id}',MyOrderDetailPage::class)->name('my-orders.show');
-
-    Route::get('/success',SuccessPage::class)->name('success');
-    Route::get('/cancel',CancelPage::class)->name('cancel');
+    Route::get('/checkout', CheckoutPage::class);
+    Route::get('/my-orders', MyOrdersPage::class);
+    Route::get('/my-orders/{order_id}', MyOrderDetailPage::class)->name('my-orders.show');
+    Route::get('/success', SuccessPage::class)->name('success');
+    Route::get('/cancel', CancelPage::class)->name('cancel');
 });
 
-
-Route::get('/payment/snap-token/{orderId}', [PaymentController::class, 'getSnapToken'])->name('payment.snap-token');
-Route::post('/payment/notification', [PaymentController::class, 'handleNotification'])->name('payment.notification');
-
+/*
+ * ─── Midtrans Webhook / HTTP Notification ────────────────────────────────────
+ *
+ * Route ini HARUS:
+ *   1. Dikecualikan dari CSRF (lihat bootstrap/app.php atau VerifyCsrfToken)
+ *   2. Dapat diakses dari internet publik (tidak di-block firewall)
+ *
+ * Midtrans mengirim POST JSON setiap kali status transaksi berubah.
+ * Sesuai official docs:
+ *   https://docs.midtrans.com/docs/https-notification-webhooks
+ */
+Route::post('/payment/notification', [PaymentController::class, 'handleNotification'])
+    ->name('payment.notification');

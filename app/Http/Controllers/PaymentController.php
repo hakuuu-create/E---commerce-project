@@ -2,91 +2,101 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Midtrans\Snap;
-use Midtrans\Config;
 use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function __construct()
-    {
-        // Konfigurasi Midtrans
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$clientKey = config('midtrans.client_key');
-        Config::$isProduction = config('midtrans.is_production');
-        Config::$isSanitized = config('midtrans.is_sanitized');
-        Config::$is3ds = config('midtrans.is_3ds');
-    }
-
-    public function getSnapToken(Request $request, $orderId)
-    {
-        $order = Order::findOrFail($orderId);
-
-        $transaction_details = [
-            'order_id' => $order->id . '-' . uniqid(),
-            'gross_amount' => $order->grand_total,
-        ];
-
-        $customer_details = [
-            'first_name' => $order->addresses->first_name ?? 'Guest',
-            'email' => $order->user->email ?? 'guest@example.com',
-            'phone' => $order->addresses->phone ?? '',
-        ];
-
-        $items = $order->order_items->map(function ($item) {
-            return [
-                'id' => $item->product_id,
-                'price' => $item->unit_amount,
-                'quantity' => $item->quantity,
-                'name' => $item->product->name,
-            ];
-        })->toArray();
-
-        $transaction_data = [
-            'transaction_details' => $transaction_details,
-            'customer_details' => $customer_details,
-            'item_details' => $items,
-        ];
-
-        try {
-            $snapToken = Snap::getSnapToken($transaction_data);
-            $order->update(['snap_token' => $snapToken]);
-            return response()->json(['snap_token' => $snapToken]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
+    /**
+     * Handle HTTP notification / webhook dari Midtrans.
+     *
+     * Midtrans mengirim POST request JSON ke endpoint ini setiap kali
+     * status transaksi berubah (pending → settlement, capture, expire, dsb.)
+     *
+     * Sesuai official docs:
+     *   https://docs.midtrans.com/docs/https-notification-webhooks
+     *
+     * Cara verifikasi authenticity: bandingkan signature_key dengan:
+     *   SHA512(order_id + status_code + gross_amount + server_key)
+     */
     public function handleNotification(Request $request)
     {
-        $notification = json_decode($request->getContent(), true);
+        $payload = $request->all();
 
-        // Validasi signature key untuk keamanan
-        $signatureKey = hash('sha512', $notification['order_id'] . $notification['status_code'] . $notification['gross_amount'] . config('midtrans.server_key'));
+        // ── 1. Verifikasi Signature Key ────────────────────────────────────────
+        // Sesuai official docs, signature dibentuk dari:
+        // SHA512(order_id + status_code + gross_amount + ServerKey)
+        $serverKey         = config('midtrans.server_key');
+        $orderId           = $payload['order_id']     ?? '';
+        $statusCode        = $payload['status_code']  ?? '';
+        $grossAmount       = $payload['gross_amount'] ?? '';
+        $incomingSignature = $payload['signature_key'] ?? '';
 
-        if ($signatureKey !== $notification['signature_key']) {
-            return response()->json(['error' => 'Invalid signature'], 403);
+        $expectedSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+
+        if ($incomingSignature !== $expectedSignature) {
+            Log::warning('[Midtrans] Invalid signature key', ['order_id' => $orderId]);
+            return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        $orderId = explode('-', $notification['order_id'])[0];
-        $order = Order::findOrFail($orderId);
+        // ── 2. Ambil order_id dari DB ──────────────────────────────────────────
+        // order_id di Midtrans kita format: "ORDER-{id}-{timestamp}"
+        // Ambil id numerik dengan explode atau regex
+        $parts   = explode('-', $orderId); // ['ORDER', '{id}', '{timestamp}']
+        $dbOrderId = $parts[1] ?? null;
 
-        switch ($notification['transaction_status']) {
+        $order = Order::find($dbOrderId);
+
+        if (!$order) {
+            Log::warning('[Midtrans] Order not found', ['order_id' => $orderId]);
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        // ── 3. Update payment_status sesuai transaction_status ─────────────────
+        // Referensi status dari official docs:
+        //   settlement / capture + fraud_status accept → paid
+        //   pending                                    → pending
+        //   deny / cancel / expire / failure           → failed
+        $transactionStatus = $payload['transaction_status'] ?? '';
+        $fraudStatus       = $payload['fraud_status']       ?? 'accept';
+
+        switch ($transactionStatus) {
             case 'capture':
+                // Kartu kredit: capture + accept = sukses
+                if ($fraudStatus === 'accept') {
+                    $order->payment_status = 'paid';
+                    $order->status         = 'processing';
+                } elseif ($fraudStatus === 'challenge') {
+                    $order->payment_status = 'pending';
+                }
+                break;
+
             case 'settlement':
-                $order->update(['payment_status' => 'paid']);
+                // Transfer / QRIS / e-wallet: settlement = sukses
+                $order->payment_status = 'paid';
+                $order->status         = 'processing';
                 break;
+
             case 'pending':
-                $order->update(['payment_status' => 'pending']);
+                $order->payment_status = 'pending';
                 break;
+
             case 'deny':
-            case 'expire':
             case 'cancel':
-                $order->update(['payment_status' => 'failed']);
+            case 'expire':
+            case 'failure':
+                $order->payment_status = 'failed';
+                break;
+
+            default:
+                Log::info('[Midtrans] Unhandled transaction_status: ' . $transactionStatus);
                 break;
         }
 
-        return response()->json(['status' => 'success']);
+        $order->save();
+
+        // Midtrans menganggap notifikasi berhasil jika kita response HTTP 200
+        return response()->json(['message' => 'OK'], 200);
     }
 }

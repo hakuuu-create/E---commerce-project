@@ -19,7 +19,7 @@ class Order extends Model
         'shipping_amount',
         'shipping_method',
         'notes',
-        'snap_token',      // ← tambahkan ini agar $order->update(['snap_token' => ...]) bekerja
+        'snap_token',
     ];
 
     public function user()
@@ -35,5 +35,17 @@ class Order extends Model
     public function address()
     {
         return $this->hasOne(Address::class);
+    }
+
+    // Alias agar $order->addresses->first_name di PaymentController tetap bekerja
+    public function addresses()
+    {
+        return $this->hasOne(Address::class);
+    }
+
+    // order_items relationship
+    public function order_items()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }
