@@ -1,147 +1,201 @@
-<div class="w-full max-w-[85rem] py-10 px-4 sm:px-6 lg:px-8 mx-auto">
-    <section class="py-10 bg-gray-50 font-poppins dark:bg-gray-800 rounded-lg">
-      <div class="px-4 py-4 mx-auto max-w-7xl lg:py-6 md:px-6">
-        <div class="flex flex-wrap mb-24 -mx-3">
-          <div class="w-full pr-2 lg:w-1/4 lg:block">
-            <div class="p-4 mb-5 bg-white border border-gray-200 dark:border-gray-900 dark:bg-gray-900">
-              <h2 class="text-2xl font-bold dark:text-gray-400"> Categories</h2>
-             
-              <div class="w-16 pb-2 mb-6 border-b border-rose-600 dark:border-gray-400"></div>
-              <ul>
-                
-            @foreach ( $categories as $category )
-            <li class="mb-4" wire:key='{{ $category->id }}'>
-              <label for="{{ $category->slug }}" class="flex items-center dark:text-gray-400 ">
-                {{-- untuk memilih filter chechbox  --}}
-                <input type="checkbox" wire:model.live="selected_categories" id="{{ $category->slug }}" value ="{{ $category->id }}" class="w-4 h-4 mr-2">
-                <span class="text-lg">{{ $category->name }}</span>
-              </label>
-            </li>
-            @endforeach
-              </ul>
-  
-            </div>
-            <div class="p-4 mb-5 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-900">
-              <h2 class="text-2xl font-bold dark:text-gray-400">Brand</h2>
-              <div class="w-16 pb-2 mb-6 border-b border-rose-600 dark:border-gray-400"></div>
-              <ul>
-                @foreach ($brands as $brand )
-                <li class="mb-4" wire:key="{{ $brand->id}}">
-                  <label for="{{ $brand->slug}}" id="{{ $brand->slug}}" value="{{ $brand->id}}" class="flex items-center dark:text-gray-300">
-                    <input type="checkbox" wire:model.live="selected_brands" class="w-4 h-4 mr-2" id="{{ $brand->slug }}" value="{{ $brand->id }}">
-                    <span class="text-lg dark:text-gray-400">{{ $brand->name}}</span>
-                  </label>
-                </li>
-                @endforeach
+<div class="min-h-screen bg-gray-50">
+    
 
-       
-              </ul>
-            </div>
-            <div class="p-4 mb-5 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-900">
-              <h2 class="text-2xl font-bold dark:text-gray-400">Product Status</h2>
-              <div class="w-16 pb-2 mb-6 border-b border-rose-600 dark:border-gray-400"></div>
-              <ul>
-                <li class="mb-4">
-                  <label for="featured" class="flex items-center dark:text-gray-300">
-                    <input type="checkbox" id="featured" wire:model.live="featured" value="1" class="w-4 h-4 mr-2">
-                    <span class="text-lg dark:text-gray-400">Featured Product</span>
-                  </label>
-                </li>
-                <li class="mb-4">
-                  <label for="" class="flex items-center dark:text-gray-300">
-                    <input type="checkbox" id="on_sale" value="1" wire:model.live='on_sale'  class="w-4 h-4 mr-2">
-                    <span class="text-lg dark:text-gray-400">On Sale</span>
-                  </label>
-                </li>
-              </ul>
-            </div>
-  
-            <div class="p-4 mb-5 bg-white border border-gray-200 dark:bg-gray-900 dark:border-gray-900">
-              <h2 class="text-2xl font-bold dark:text-gray-400">Price</h2>
-              <div class="w-16 pb-2 mb-6 border-b border-rose-600 dark:border-gray-400"></div>
-              <div>
-                <div class="font-semibold">{{ Number::currency($price_range, 'IDR') }}</div>
-                <input type="range" wire:model.live="price_range" class="w-full h-1 mb-4 bg-blue-100 rounded appearance-none cursor-pointer" max="50000000" value="10000" step="100">
-                <div class="flex justify-between ">
-                  <span class="inline-block text-lg font-bold text-blue-400 ">{{ Number::currency(1000, 'IDR') }}</span>
-                  <span class="inline-block text-lg font-bold text-blue-400 ">{{ Number::currency(50000000, 'IDR') }}</span>
-                </div>
-              </div>
-            </div>
-            
-          </div>
-          <div class="w-full px-3 lg:w-3/4">
-            <div class="px-3 mb-4">
-              <div class="items-center justify-between hidden px-3 py-2 bg-gray-100 md:flex dark:bg-gray-900 ">
-                <div class="flex items-center justify-between">
-                  <select name="" id="" wire:model.live='sort' class="block w-40 text-base bg-gray-100 cursor-pointer dark:text-gray-400 dark:bg-gray-900">
-                    <option value="latest">Sort by latest</option>
-                    <option value="price">Sort by Price</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div class="flex flex-wrap items-center ">
-  
-              @foreach ($products as $product )
-              <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3" wire:key="{{ $product->id }}">
-                <div class="border border-gray-300 dark:border-gray-700">
-                  <div class="relative bg-gray-200">
-                    <a href="/products/{{ $product->slug }}" class="">
-                      <img src="{{ url('storage',$product->images[0]) }}" alt="{{ $product->name }}" class="object-cover w-full h-56 mx-auto ">
-                    </a>
-                  </div>
-                  <div class="p-3 ">
-                    <div class="flex items-center justify-between gap-2 mb-2">
-                      <h3 class="text-xl font-medium dark:text-gray-400">
-                        {{ $product->name }}
-                      </h3>
-                    </div>
-                    <p class="text-lg ">
-                      <span class="text-green-600 dark:text-green-600">{{ Number::currency($product->price, 'IDR')}}</span>
-                    </p>
-                  </div>
-                  <div class="flex justify-center p-4 border-t border-gray-300 dark:border-gray-700">
-  
-                    <a href="#" wire:click.prevent="addToCart({{ $product->id }})" class="text-gray-500 flex items-center space-x-2 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 bi bi-cart3 " viewBox="0 0 16 16">
-                        <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"></path>
-                      </svg><span wire:loading.remove wire:target='addToCart({{ $product->id }})'>Add to Cart</span>
-                      <span wire:loading wire:target='addToCart({{ $product->id }})'>Adding...</span>
-                    </a>
-  
-                  </div>
-                </div>
-              </div>
-              @endforeach
-              {{-- Notifikasi tambah ke keranjang --}}
-             <div 
-             x-data="{ show: false, message: '' }" 
-             x-on:cartItemAdded.window="
-                 message = $event.detail.message;
-                 show = true;
-                 setTimeout(() => show = false, 3000);
-             "
-             class="fixed top-5 right-5 z-50"
-             >
-             <div 
-                 x-show="show" 
-                 x-transition 
-                 class="bg-green-500 text-white px-4 py-2 rounded shadow"
-             >
-                 <span x-text="message"></span>
-             </div>
-             </div>
-  
-            </div>
-            <!-- pagination start -->
-            <div class="flex justify-end mt-6">
-              {{ $products->links() }}
-            </div>
-            <!-- pagination end -->
-          </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {{-- Breadcrumb --}}
+        <div class="flex items-center text-sm text-gray-500 mb-6">
+            <a href="/" class="hover:text-blue-600 transition">Beranda</a>
+            <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            <span class="text-gray-700 font-medium">Produk</span>
         </div>
-      </div>
-    </section>
-  
-  </div>
+
+        <div class="flex flex-wrap -mx-3">
+            {{-- Sidebar Filter --}}
+            <div class="w-full lg:w-1/4 px-3">
+                <div class="sticky top-24 space-y-5">
+                    {{-- Filter Kategori --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-4 border-b border-blue-100 bg-blue-50/30">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                                    </svg>
+                                    Kategori
+                                </h3>
+                                @if(count($selected_categories) > 0)
+                                    <button wire:click="resetCategories" class="text-xs text-blue-600 hover:text-blue-800">Reset</button>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="p-4 max-h-80 overflow-y-auto">
+                            @foreach ($categories as $category)
+                            <label wire:key="{{ $category->id }}" class="flex items-center gap-3 py-2 hover:bg-blue-50/50 px-2 -mx-2 rounded-lg transition cursor-pointer">
+                                <input type="checkbox" wire:model.live="selected_categories" value="{{ $category->id }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-700 text-sm">{{ $category->name }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Filter Brand --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-4 border-b border-blue-100 bg-blue-50/30">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    Brand
+                                </h3>
+                                @if(count($selected_brands) > 0)
+                                    <button wire:click="resetBrands" class="text-xs text-blue-600 hover:text-blue-800">Reset</button>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="p-4 max-h-64 overflow-y-auto">
+                            @foreach ($brands as $brand)
+                            <label wire:key="{{ $brand->id }}" class="flex items-center gap-3 py-2 hover:bg-blue-50/50 px-2 -mx-2 rounded-lg transition cursor-pointer">
+                                <input type="checkbox" wire:model.live="selected_brands" value="{{ $brand->id }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-700 text-sm">{{ $brand->name }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Filter Status Produk --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-4 border-b border-blue-100 bg-blue-50/30">
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Status Produk
+                            </h3>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <label class="flex items-center gap-3 py-2 hover:bg-blue-50/50 px-2 -mx-2 rounded-lg transition cursor-pointer">
+                                <input type="checkbox" wire:model.live="featured" value="1" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-700 text-sm">Featured Product</span>
+                            </label>
+                            <label class="flex items-center gap-3 py-2 hover:bg-blue-50/50 px-2 -mx-2 rounded-lg transition cursor-pointer">
+                                <input type="checkbox" wire:model.live="on_sale" value="1" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-700 text-sm">On Sale</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- Filter Harga --}}
+                    <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
+                        <div class="p-4 border-b border-blue-100 bg-blue-50/30">
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Harga
+                            </h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="mb-4">
+                                <span class="text-2xl font-bold text-blue-600">{{ Number::currency($price_range, 'IDR') }}</span>
+                            </div>
+                            <input type="range" wire:model.live="price_range" class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer accent-blue-600" max="50000000" min="1000" step="1000">
+                            <div class="flex justify-between mt-2 text-xs text-gray-500">
+                                <span>{{ Number::currency(1000, 'IDR') }}</span>
+                                <span>{{ Number::currency(50000000, 'IDR') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Main Content: Produk --}}
+            <div class="w-full lg:w-3/4 px-3 mt-6 lg:mt-0">
+                {{-- Header & Sorting --}}
+                <div class="bg-white rounded-xl shadow-sm border border-blue-100 p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-gray-600 text-sm">
+                            Menampilkan <span class="font-semibold text-gray-800">{{ $products->total() }}</span> produk
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-500">Urutkan:</span>
+                        <select wire:model.live="sort" class="border border-blue-200 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="latest">Terbaru</option>
+                            <option value="price">Termurah</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Grid Produk --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    @foreach ($products as $product)
+                    <div wire:key="{{ $product->id }}" class="group bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                        {{-- Gambar Produk --}}
+                        <a href="/products/{{ $product->slug }}" class="block relative overflow-hidden bg-gray-100 h-48">
+                            <img src="{{ url('storage', $product->images[0]) }}" alt="{{ $product->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            @if($product->discount_percent ?? false)
+                                <span class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">Diskon {{ $product->discount_percent }}%</span>
+                            @endif
+                        </a>
+
+                        {{-- Informasi Produk --}}
+                        <div class="p-4">
+                            <a href="/products/{{ $product->slug }}" class="block">
+                                <h3 class="font-semibold text-gray-800 text-base mb-1 line-clamp-2 hover:text-blue-600 transition">{{ $product->name }}</h3>
+                            </a>
+                            
+                            
+                            {{-- Harga --}}
+                            <div class="mt-2">
+                                <span class="text-xl font-bold text-blue-600">{{ Number::currency($product->price, 'IDR') }}</span>
+                                @if($product->old_price ?? false)
+                                    <span class="text-sm text-gray-400 line-through ml-2">{{ Number::currency($product->old_price, 'IDR') }}</span>
+                                @endif
+                            </div>
+
+                            {{-- Tombol Add to Cart --}}
+                            <button wire:click.prevent="addToCart({{ $product->id }})" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6"></path>
+                                </svg>
+                                <span wire:loading.remove wire:target="addToCart({{ $product->id }})">Tambah ke Keranjang</span>
+                                <span wire:loading wire:target="addToCart({{ $product->id }})">Menambahkan...</span>
+                            </button>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                {{-- Pagination --}}
+                <div class="mt-8 flex justify-center">
+                    {{ $products->links() }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Notifikasi dengan Alpine --}}
+    <div 
+        x-data="{ show: false, message: '' }" 
+        x-on:cartItemAdded.window="
+            message = $event.detail.message;
+            show = true;
+            setTimeout(() => show = false, 3000);
+        "
+        class="fixed bottom-5 right-5 z-50"
+    >
+        <div 
+            x-show="show" 
+            x-transition.duration.300ms
+            class="bg-green-500 text-white px-5 py-3 rounded-lg shadow-lg flex items-center gap-3"
+        >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span x-text="message"></span>
+        </div>
+    </div>
+</div>
