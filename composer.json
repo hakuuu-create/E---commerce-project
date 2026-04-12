@@ -12,6 +12,7 @@
         "filament/filament": "3.3",
         "jantinnerezo/livewire-alert": "^4.0",
         "laravel/framework": "^11.31",
+        "laravel/socialite": "^5.26",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.6",
         "midtrans/midtrans-php": "^2.6"

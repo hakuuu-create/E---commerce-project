@@ -1,11 +1,9 @@
-
-
 <?php
- 
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
- 
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -13,16 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        /*
-         * Exclude rute webhook Midtrans dari CSRF protection.
-         *
-         * Midtrans mengirim POST request dari server mereka, sehingga tidak
-         * membawa CSRF token. Jika tidak dikecualikan, semua notifikasi akan
-         * ditolak dengan HTTP 419 (Token Mismatch).
-         *
-         * Sesuai official docs:
-         *   https://docs.midtrans.com/docs/https-notification-webhooks
-         */
+        // Exclude payment notification dari CSRF (webhook dari Midtrans)
         $middleware->validateCsrfTokens(except: [
             'payment/notification',
         ]);
@@ -30,4 +19,3 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
- 

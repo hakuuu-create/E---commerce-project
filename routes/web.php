@@ -16,12 +16,17 @@ use Illuminate\Support\Facades\Route;
 use App\Livewire\Auth\ResetPasswordPage;
 use App\Livewire\Auth\ForgotPasswordPage;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\GoogleAuthController;
 
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
 Route::get('/products', ProductsPage::class);
 Route::get('/cart', CartPage::class);
 Route::get('/products/{slug}', ProductDetailPage::class);
+
+// Google OAuth — di luar middleware guest agar callback tidak diblokir
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', LoginPage::class)->name('login');
@@ -42,16 +47,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/cancel', CancelPage::class)->name('cancel');
 });
 
-/*
- * ─── Midtrans Webhook / HTTP Notification ────────────────────────────────────
- *
- * Route ini HARUS:
- *   1. Dikecualikan dari CSRF (lihat bootstrap/app.php atau VerifyCsrfToken)
- *   2. Dapat diakses dari internet publik (tidak di-block firewall)
- *
- * Midtrans mengirim POST JSON setiap kali status transaksi berubah.
- * Sesuai official docs:
- *   https://docs.midtrans.com/docs/https-notification-webhooks
- */
-Route::post('/payment/notification', [PaymentController::class, 'handleNotification'])
-    ->name('payment.notification');
+Route::get('/payment/snap-token/{orderId}', [PaymentController::class, 'getSnapToken'])->name('payment.snap-token');
+Route::post('/payment/notification', [PaymentController::class, 'handleNotification'])->name('payment.notification');
