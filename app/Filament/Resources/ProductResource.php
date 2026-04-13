@@ -25,12 +25,13 @@ use App\Filament\Resources\ProductResource\RelationManagers;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 
-
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
+
+    protected static ?string $navigationGroup = 'Data Master';
 
     protected static ?int $navigationSort = 4;
 
@@ -38,79 +39,77 @@ class ProductResource extends Resource
     {
         return $form
             ->schema([
-              Group::make()->schema([
-                Section::make('Product Information')->schema([
-                    TextInput::make('name')
-                        ->required()
-                        ->maxLength(255)
-                        ->live(onBlur:true)
-                        ->afterStateUpdated(fn(string $operation, $state, Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+                Group::make()->schema([
+                    Section::make('Product Information')->schema([
+                        TextInput::make('name')
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(string $operation, $state, Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
-                    TextInput::make('slug')
-                        ->required()  
-                        ->maxLength(255)
-                        ->disabled()
-                        ->required()
-                        ->dehydrated()
-                        ->unique(Product::class, 'slug', ignoreRecord: true) ,
-                        
-                    MarkdownEditor::make('description')
-                        ->columnSpanFull()
-                        ->fileAttachmentsDirectory('products')    
-                ])->columns(2),
-                                       //Images
-                Section::make('Images')->schema([
-                    FileUpload::make('images')
-                    ->multiple()
-                    ->directory('products')
-                    ->maxFiles(10)
-                    ->reorderable()
-                ])
+                        TextInput::make('slug')
+                            ->required()
+                            ->maxLength(255)
+                            ->disabled()
+                            ->dehydrated()
+                            ->unique(Product::class, 'slug', ignoreRecord: true),
 
-              ])->columnSpan(2),
+                        MarkdownEditor::make('description')
+                            ->columnSpanFull()
+                            ->fileAttachmentsDirectory('products')
+                    ])->columns(2),
+
+                    Section::make('Images')->schema([
+                        FileUpload::make('images')
+                            ->multiple()
+                            ->directory('products')
+                            ->maxFiles(10)
+                            ->reorderable()
+                    ])
+
+                ])->columnSpan(2),
 
                 Group::make()->schema([
-                  Section::make('Price')->schema([
-                    TextInput::make('price')
-    ->required()
-    ->prefix('Rp')
-    // Gunakan format mask langsung tanpa class RawMask
-    ->mask('999.999.999.999') 
-    // Menghapus titik otomatis sebelum masuk ke database
-    ->stripCharacters('.') 
-    // Pastikan ini tetap ada agar validasi angka berjalan
-    ->numeric()
-                  ]),
-                  Section::make('Associations')->schema([
-                    Select::make('category_id')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->relationship('category','name'),
+                    Section::make('Price')->schema([
+                        TextInput::make('price')
+                            ->required()
+                            ->prefix('Rp')
+                            ->mask('999.999.999.999')
+                            ->stripCharacters('.')
+                            ->numeric()
+                    ]),
+                    Section::make('Associations')->schema([
+                        Select::make('category_id')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->relationship('category', 'name'),
 
-                    Select::make('brand_id')
-                        ->required()
-                        ->searchable()
-                        ->preload()
-                        ->relationship('brand','name')    
-                  ]),
+                        Select::make('brand_id')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->relationship('brand', 'name')
+                    ]),
 
-                  Section::make('Status')->schema([
-                    Toggle::make('is_stock')//Produk tersedia di stok atau tidak.
-                        ->required()
-                        ->default(true),
+                    Section::make('Status')->schema([
+                        TextInput::make('stock')
+                            ->required()
+                            ->numeric()
+                            ->default(0)
+                            ->label('Stock Quantity'),
 
-                    Toggle::make('is_active')//Produk aktif atau tidak di sistem.
-                        ->required()
-                        ->default(true),
-                     
-                    Toggle::make('is_featured')//Produk termasuk dalam daftar unggulan atau tidak.
-                        ->required(),  
-                    
-                    Toggle::make('on_sale')//Produk sedang dalam diskon/promosi atau tidak.
-                        ->required()
-                        ->default(true),      
-                  ])
+                        Toggle::make('is_active')
+                            ->required()
+                            ->default(true),
+
+                        Toggle::make('is_featured')
+                            ->required(),
+
+                        Toggle::make('on_sale')
+                            ->required()
+                            ->default(true),
+                    ])
                 ])->columnSpan(1)
 
             ])->columns(3);
@@ -125,51 +124,45 @@ class ProductResource extends Resource
 
                 TextColumn::make('category.name')
                     ->sortable(),
-                
+
                 TextColumn::make('brand.name')
-                    ->sortable(), 
-                    
+                    ->sortable(),
+
                 TextColumn::make('price')
                     ->sortable()
                     ->money('IDR', locale: 'id'),
 
-                 TextColumn::make('stock')
-                    ->sortable(),    
-                    
+                TextColumn::make('stock')
+                    ->sortable(),
+
                 IconColumn::make('is_featured')
                     ->boolean(),
 
                 IconColumn::make('on_sale')
                     ->boolean(),
 
-                #IconColumn::make('is_active')
-                #    ->boolean(),
-
                 TextColumn::make('created_at')
                     ->datetime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault:true),    
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->datetime()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault:true),    
+                    ->toggleable(isToggledHiddenByDefault: true),
 
             ])
-            //membuat filter
             ->filters([
                 SelectFilter::make('Category')
-                    ->relationship('category','name'),
+                    ->relationship('category', 'name'),
                 SelectFilter::make('Brand')
-                    ->relationship('brand','name'),
-
+                    ->relationship('brand', 'name'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
-
                 ]),
             ])
             ->bulkActions([

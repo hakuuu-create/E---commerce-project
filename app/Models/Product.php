@@ -17,10 +17,10 @@ class Product extends Model{
         'price',
         'is_active',
         'is_featured',
-        'in_stock',
+        'stock',
         'on_sale'
     ];
-    protected $casts = ['images'=>'array'];
+    protected $casts = ['images'=>'array', 'stock'=>'integer'];
 
     public function category(){
         return $this->belongsTo(Category::class);

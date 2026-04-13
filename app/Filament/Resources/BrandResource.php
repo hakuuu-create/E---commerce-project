@@ -30,6 +30,8 @@ class BrandResource extends Resource
     //global search
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?string $navigationGroup = 'Data Master';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
