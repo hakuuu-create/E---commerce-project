@@ -25,6 +25,7 @@ use App\Filament\Resources\ProductResource\RelationManagers;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 
+
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
@@ -71,9 +72,14 @@ class ProductResource extends Resource
                 Group::make()->schema([
                   Section::make('Price')->schema([
                     TextInput::make('price')
-                        ->numeric()
-                        ->required()
-                        ->prefix(config('app.currency', 'Rp'))
+    ->required()
+    ->prefix('Rp')
+    // Gunakan format mask langsung tanpa class RawMask
+    ->mask('999.999.999.999') 
+    // Menghapus titik otomatis sebelum masuk ke database
+    ->stripCharacters('.') 
+    // Pastikan ini tetap ada agar validasi angka berjalan
+    ->numeric()
                   ]),
                   Section::make('Associations')->schema([
                     Select::make('category_id')
@@ -125,7 +131,7 @@ class ProductResource extends Resource
                     
                 TextColumn::make('price')
                     ->sortable()
-                    ->money('IDR'), 
+                    ->money('IDR', locale: 'id'),
                     
                 IconColumn::make('is_featured')
                     ->boolean(),
