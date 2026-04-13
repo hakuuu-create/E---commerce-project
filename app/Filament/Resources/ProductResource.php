@@ -132,6 +132,9 @@ class ProductResource extends Resource
                 TextColumn::make('price')
                     ->sortable()
                     ->money('IDR', locale: 'id'),
+
+                 TextColumn::make('stock')
+                    ->sortable(),    
                     
                 IconColumn::make('is_featured')
                     ->boolean(),
@@ -139,11 +142,8 @@ class ProductResource extends Resource
                 IconColumn::make('on_sale')
                     ->boolean(),
 
-                IconColumn::make('is_stock')
-                    ->boolean(),
-
-                IconColumn::make('is_active')
-                    ->boolean(),
+                #IconColumn::make('is_active')
+                #    ->boolean(),
 
                 TextColumn::make('created_at')
                     ->datetime()
