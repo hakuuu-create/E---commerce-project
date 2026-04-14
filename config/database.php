@@ -40,6 +40,7 @@ return [
             'busy_timeout' => null,
             'journal_mode' => null,
             'synchronous' => null,
+            'timezone' => '+07:00',
         ],
 
         'mysql' => [

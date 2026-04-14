@@ -12,12 +12,12 @@ class AppServiceProvider extends ServiceProvider
         //
     }
 
-    public function boot(): void
-    {
-        // 1. Paksa HTTPS jika diakses via ngrok
-        if (str_contains(request()->getHttpHost(), 'ngrok-free.app')) {
-            URL::forceScheme('https');
-        }
+   public function boot(): void
+{
+    if (app()->environment('local')) {
+        URL::forceScheme('https');
+    }
+
 
         // 2. Konfigurasi Midtrans
         \Midtrans\Config::$serverKey    = config('midtrans.server_key');

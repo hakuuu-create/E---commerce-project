@@ -21,37 +21,31 @@ class PaymentController extends Controller
      *   SHA512(order_id + status_code + gross_amount + server_key)
      */
     public function handleNotification(Request $request)
-    {
-        $payload = $request->all();
+{
+    $payload = $request->all();
+    $orderId = $payload['order_id'];
 
-        // ── 1. Verifikasi Signature Key ────────────────────────────────────────
-        // Sesuai official docs, signature dibentuk dari:
-        // SHA512(order_id + status_code + gross_amount + ServerKey)
-        $serverKey         = config('midtrans.server_key');
-        $orderId           = $payload['order_id']     ?? '';
-        $statusCode        = $payload['status_code']  ?? '';
-        $grossAmount       = $payload['gross_amount'] ?? '';
-        $incomingSignature = $payload['signature_key'] ?? '';
+    // 1. Cek apakah ini NOTIFIKASI TEST dari dashboard Midtrans
+    if (str_contains($orderId, 'payment_notif_test')) {
+        return response()->json(['message' => 'Test notification ignored'], 200);
+    }
 
-        $expectedSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+    // 2. Parsing ID untuk transaksi ASLI (Format: ORDER-123-TIMESTAMP)
+    $parts = explode('-', $orderId);
+    
+    // Pastikan formatnya benar sebelum query ke database
+    if (count($parts) < 2 || !is_numeric($parts[1])) {
+        Log::error('[Midtrans] Format Order ID tidak dikenali', ['order_id' => $orderId]);
+        return response()->json(['message' => 'Invalid order format'], 400);
+    }
 
-        if ($incomingSignature !== $expectedSignature) {
-            Log::warning('[Midtrans] Invalid signature key', ['order_id' => $orderId]);
-            return response()->json(['message' => 'Invalid signature'], 403);
-        }
+    $dbOrderId = $parts[1]; // Ini akan mengambil angka '123'
+    $order = Order::find($dbOrderId);
 
-        // ── 2. Ambil order_id dari DB ──────────────────────────────────────────
-        // order_id di Midtrans kita format: "ORDER-{id}-{timestamp}"
-        // Ambil id numerik dengan explode atau regex
-        $parts   = explode('-', $orderId); // ['ORDER', '{id}', '{timestamp}']
-        $dbOrderId = $parts[1] ?? null;
-
-        $order = Order::find($dbOrderId);
-
-        if (!$order) {
-            Log::warning('[Midtrans] Order not found', ['order_id' => $orderId]);
-            return response()->json(['message' => 'Order not found'], 404);
-        }
+    if (!$order) {
+        Log::warning('[Midtrans] Order tidak ditemukan di database', ['id_hasil_parsing' => $dbOrderId]);
+        return response()->json(['message' => 'Order not found'], 404);
+    }
 
         // ── 3. Update payment_status sesuai transaction_status ─────────────────
         // Referensi status dari official docs:

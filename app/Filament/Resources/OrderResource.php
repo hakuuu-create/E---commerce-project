@@ -192,6 +192,9 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
+                Textcolumn::make('created_at')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('user.name')
                     ->label('customer')
                     ->sortable()

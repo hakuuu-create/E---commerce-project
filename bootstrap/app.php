@@ -22,10 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
          *
          * Sesuai official docs:
          *   https://docs.midtrans.com/docs/https-notification-webhooks
+         * 
          */
+        $middleware->trustProxies(at: '*'); 
+
         $middleware->validateCsrfTokens(except: [
-            'payment/notification',
-        ]);
+        '/payment/notification', 
+    ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

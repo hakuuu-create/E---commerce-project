@@ -1,5 +1,5 @@
 <x-mail::message>
-# Order Placed successfully
+# Your order has been placed!
 
 Thank you for your order.Your order number is:{{ $order->id }}
 
